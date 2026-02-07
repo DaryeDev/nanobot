@@ -12,7 +12,6 @@ from nanobot.providers.github_copilot_auth import (
     request_device_code,
 )
 from nanobot.providers.github_copilot_token import (
-    CopilotTokenError,
     _is_token_valid,
     _load_cached_token,
     _save_token_cache,
