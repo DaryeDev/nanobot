@@ -8,7 +8,6 @@ from typing import Optional
 import httpx
 from loguru import logger
 
-
 # GitHub Copilot API endpoint
 COPILOT_TOKEN_URL = "https://api.github.com/copilot_internal/v2/token"
 
@@ -35,22 +34,22 @@ def _ensure_cache_dir():
 def _load_cached_token() -> Optional[dict]:
     """
     Load cached Copilot token from disk.
-    
+
     Returns:
         Cached token data or None if not found/invalid.
     """
     if not TOKEN_CACHE_PATH.exists():
         return None
-    
+
     try:
         with open(TOKEN_CACHE_PATH, "r") as f:
             data = json.load(f)
-        
+
         # Validate structure
         if not all(key in data for key in ["token", "expiresAt", "updatedAt"]):
             logger.warning("Invalid token cache structure, ignoring")
             return None
-        
+
         return data
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(f"Failed to load token cache: {e}")
@@ -60,19 +59,19 @@ def _load_cached_token() -> Optional[dict]:
 def _save_token_cache(token: str, expires_at_ms: int):
     """
     Save Copilot token to cache.
-    
+
     Args:
         token: The Copilot API token
         expires_at_ms: Expiration timestamp in milliseconds since epoch
     """
     _ensure_cache_dir()
-    
+
     data = {
         "token": token,
         "expiresAt": expires_at_ms,
         "updatedAt": int(time.time() * 1000),
     }
-    
+
     try:
         with open(TOKEN_CACHE_PATH, "w") as f:
             json.dump(data, f, indent=2)
@@ -84,34 +83,34 @@ def _save_token_cache(token: str, expires_at_ms: int):
 def _is_token_valid(cached: dict) -> bool:
     """
     Check if a cached token is still valid.
-    
+
     Args:
         cached: Cached token data
-    
+
     Returns:
         True if token is valid and not expired (with margin)
     """
     now_ms = int(time.time() * 1000)
     expires_at_ms = cached.get("expiresAt", 0)
-    
+
     # Check if expired (with safety margin)
     if expires_at_ms <= now_ms + EXPIRY_MARGIN_MS:
         logger.debug("Cached token expired or expiring soon")
         return False
-    
+
     return True
 
 
 async def exchange_token(github_token: str) -> tuple[str, str]:
     """
     Exchange GitHub token for Copilot API token.
-    
+
     Args:
         github_token: GitHub personal access token
-    
+
     Returns:
         Tuple of (copilot_token, base_url)
-    
+
     Raises:
         CopilotTokenError: If token exchange fails.
     """
@@ -125,7 +124,7 @@ async def exchange_token(github_token: str) -> tuple[str, str]:
                 },
                 timeout=30.0,
             )
-            
+
             if response.status_code == 401:
                 raise CopilotTokenError(
                     "GitHub token is invalid or doesn't have Copilot access. "
@@ -135,15 +134,15 @@ async def exchange_token(github_token: str) -> tuple[str, str]:
                 raise CopilotTokenError(
                     "Copilot API not available. Please ensure you have an active GitHub Copilot subscription."
                 )
-            
+
             response.raise_for_status()
             data = response.json()
-            
+
             # Extract token
             token = data.get("token")
             if not token:
                 raise CopilotTokenError(f"No token in response: {data}")
-            
+
             # Extract and convert base URL
             base_url = DEFAULT_COPILOT_BASE_URL
             proxy_ep = data.get("proxy-ep")
@@ -155,7 +154,7 @@ async def exchange_token(github_token: str) -> tuple[str, str]:
                 else:
                     base_url = f"https://{proxy_ep}"
                 logger.debug(f"Using base URL from proxy-ep: {base_url}")
-            
+
             # Extract expiration time
             expires_at = data.get("expires_at")
             if expires_at:
@@ -165,13 +164,13 @@ async def exchange_token(github_token: str) -> tuple[str, str]:
             else:
                 # Default to 30 minutes from now if not provided
                 expires_at_ms = int(time.time() * 1000) + (30 * 60 * 1000)
-            
+
             # Cache the token
             _save_token_cache(token, expires_at_ms)
-            
+
             logger.info("Successfully exchanged GitHub token for Copilot token")
             return token, base_url
-            
+
         except httpx.HTTPError as e:
             raise CopilotTokenError(f"Failed to exchange token: {e}") from e
 
@@ -179,14 +178,14 @@ async def exchange_token(github_token: str) -> tuple[str, str]:
 async def get_copilot_token(github_token: str, force_refresh: bool = False) -> tuple[str, str]:
     """
     Get a valid Copilot API token, using cache if available.
-    
+
     Args:
         github_token: GitHub personal access token
         force_refresh: Force refresh even if cached token is valid
-    
+
     Returns:
         Tuple of (copilot_token, base_url)
-    
+
     Raises:
         CopilotTokenError: If token retrieval fails.
     """
@@ -198,7 +197,7 @@ async def get_copilot_token(github_token: str, force_refresh: bool = False) -> t
             # We don't cache base_url, so use default
             # In practice, base_url rarely changes
             return cached["token"], DEFAULT_COPILOT_BASE_URL
-    
+
     # Exchange for new token
     return await exchange_token(github_token)
 
