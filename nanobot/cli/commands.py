@@ -73,7 +73,7 @@ def onboard():
     console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/HKUDS/nanobot#-chat-apps[/dim]")
 
 
-@app.command()
+@app.command(name="login-github-copilot")
 def login_github_copilot(
     profile_id: str = typer.Option(None, "--profile-id", help="Profile ID for multi-profile setups"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
