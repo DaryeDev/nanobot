@@ -99,6 +99,28 @@ class LiteLLMProvider(LLMProvider):
         """
         model = model or self.default_model
         
+        # Handle GitHub Copilot models
+        copilot_base_url = None
+        if "github-copilot" in model.lower() or "copilot" in model.lower():
+            # Check for GitHub token in environment variables
+            github_token = (
+                os.environ.get("COPILOT_GITHUB_TOKEN") or
+                os.environ.get("GH_TOKEN") or
+                os.environ.get("GITHUB_TOKEN")
+            )
+            
+            if github_token:
+                try:
+                    # Exchange GitHub token for Copilot API token
+                    from nanobot.providers.github_copilot_token import get_copilot_token
+                    copilot_token, copilot_base_url = await get_copilot_token(github_token)
+                    # Set the Copilot token for LiteLLM
+                    os.environ["GITHUB_COPILOT_TOKEN"] = copilot_token
+                except Exception as e:
+                    # Log error but continue - LiteLLM might handle it
+                    import logging
+                    logging.warning(f"Failed to exchange GitHub token for Copilot token: {e}")
+        
         # Auto-prefix model names for known providers
         # (keywords, target_prefix, skip_if_starts_with)
         _prefix_rules = [
@@ -121,6 +143,12 @@ class LiteLLMProvider(LLMProvider):
         elif self.is_vllm:
             model = f"hosted_vllm/{model}"
         
+        # Prefix GitHub Copilot models if needed
+        if ("copilot" in model_lower or any(m in model_lower for m in ["gpt-4o", "gpt-4.1", "o1", "o3-mini"])) and not model.startswith("github-copilot/"):
+            # Only prefix if it's clearly a Copilot model or explicitly named
+            if "copilot" in model_lower:
+                model = f"github-copilot/{model.split('/')[-1]}"
+        
         # kimi-k2.5 only supports temperature=1.0
         if "kimi-k2.5" in model.lower():
             temperature = 1.0
@@ -133,7 +161,10 @@ class LiteLLMProvider(LLMProvider):
         }
         
         # Pass api_base directly for custom endpoints (vLLM, etc.)
-        if self.api_base:
+        # Use copilot_base_url if available, otherwise use self.api_base
+        if copilot_base_url:
+            kwargs["api_base"] = copilot_base_url
+        elif self.api_base:
             kwargs["api_base"] = self.api_base
         
         # Pass extra headers (e.g. APP-Code for AiHubMix)

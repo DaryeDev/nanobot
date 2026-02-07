@@ -81,6 +81,7 @@ class ProvidersConfig(BaseModel):
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     moonshot: ProviderConfig = Field(default_factory=ProviderConfig)
     aihubmix: ProviderConfig = Field(default_factory=ProviderConfig)  # AiHubMix API gateway
+    github_copilot: ProviderConfig = Field(default_factory=ProviderConfig)  # GitHub Copilot
 
 
 class GatewayConfig(BaseModel):
@@ -135,6 +136,7 @@ class Config(BaseSettings):
         # Keyword → provider mapping (order matters: gateways first)
         keyword_map = {
             "aihubmix": p.aihubmix, "openrouter": p.openrouter,
+            "github-copilot": p.github_copilot, "copilot": p.github_copilot,
             "deepseek": p.deepseek, "anthropic": p.anthropic, "claude": p.anthropic,
             "openai": p.openai, "gpt": p.openai, "gemini": p.gemini,
             "zhipu": p.zhipu, "glm": p.zhipu, "zai": p.zhipu,
@@ -145,7 +147,7 @@ class Config(BaseSettings):
             if kw in model and provider.api_key:
                 return provider
         # Fallback: gateways first (can serve any model), then specific providers
-        all_providers = [p.openrouter, p.aihubmix, p.anthropic, p.openai, p.deepseek,
+        all_providers = [p.openrouter, p.aihubmix, p.github_copilot, p.anthropic, p.openai, p.deepseek,
                          p.gemini, p.zhipu, p.dashscope, p.moonshot, p.vllm, p.groq]
         return next((pr for pr in all_providers if pr.api_key), None)
 

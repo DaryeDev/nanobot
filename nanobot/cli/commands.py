@@ -73,6 +73,91 @@ def onboard():
     console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/HKUDS/nanobot#-chat-apps[/dim]")
 
 
+@app.command()
+def login_github_copilot(
+    profile_id: str = typer.Option(None, "--profile-id", help="Profile ID for multi-profile setups"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
+):
+    """Authenticate with GitHub Copilot via OAuth device flow."""
+    import sys
+    
+    # Check for TTY
+    if not sys.stdin.isatty():
+        console.print("[red]Error: This command requires an interactive terminal[/red]")
+        raise typer.Exit(1)
+    
+    from nanobot.config.loader import load_config, save_config
+    from nanobot.providers.github_copilot_auth import (
+        authenticate,
+        request_device_code,
+        poll_for_token,
+        GitHubDeviceFlowError,
+    )
+    
+    console.print(f"\n{__logo__} [bold]GitHub Copilot Authentication[/bold]\n")
+    console.print("This will authenticate nanobot with GitHub Copilot.")
+    console.print("[dim]Note: Requires an active GitHub Copilot subscription.[/dim]\n")
+    
+    if not yes:
+        if not typer.confirm("Continue?"):
+            console.print("Cancelled.")
+            raise typer.Exit()
+    
+    async def run_auth():
+        try:
+            # Request device code
+            console.print("Requesting device code from GitHub...")
+            device_flow = await request_device_code()
+            
+            # Display instructions to user
+            console.print("\n[bold green]→ Open this URL in your browser:[/bold green]")
+            console.print(f"  [cyan][link]{device_flow['verification_uri']}[/link][/cyan]\n")
+            console.print("[bold green]→ Enter this code:[/bold green]")
+            console.print(f"  [yellow]{device_flow['user_code']}[/yellow]\n")
+            console.print(f"Waiting for authorization (expires in {device_flow['expires_in'] // 60} minutes)...")
+            
+            # Poll for token
+            github_token = await poll_for_token(
+                device_code=device_flow["device_code"],
+                interval=device_flow["interval"],
+                expires_in=device_flow["expires_in"],
+            )
+            
+            console.print("\n[green]✓[/green] Successfully authenticated with GitHub!")
+            
+            # Save token to config
+            config = load_config()
+            config.providers.github_copilot.api_key = f"${{COPILOT_GITHUB_TOKEN}}"
+            
+            # Save the actual token to environment variable hint
+            console.print(f"\n[bold]Save your GitHub token:[/bold]")
+            console.print(f"Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):\n")
+            console.print(f"  [cyan]export COPILOT_GITHUB_TOKEN='{github_token}'[/cyan]\n")
+            
+            # Update config
+            save_config(config)
+            console.print(f"[green]✓[/green] Updated config at ~/.nanobot/config.json")
+            
+            # Optionally update default model
+            if not yes:
+                if typer.confirm("\nSet github-copilot/gpt-4o as default model?", default=True):
+                    config.agents.defaults.model = "github-copilot/gpt-4o"
+                    save_config(config)
+                    console.print("[green]✓[/green] Updated default model")
+            
+            console.print(f"\n{__logo__} [bold green]GitHub Copilot is ready![/bold green]")
+            console.print("\n[bold]Next steps:[/bold]")
+            console.print("  1. Set COPILOT_GITHUB_TOKEN in your environment")
+            console.print("  2. Chat: [cyan]nanobot agent -m \"Hello from Copilot!\"[/cyan]")
+            
+        except GitHubDeviceFlowError as e:
+            console.print(f"\n[red]Authentication failed: {e}[/red]")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"\n[red]Unexpected error: {e}[/red]")
+            raise typer.Exit(1)
+    
+    asyncio.run(run_auth())
 
 
 def _create_workspace_templates(workspace: Path):
@@ -642,6 +727,7 @@ def status():
         has_zhipu = bool(config.providers.zhipu.api_key)
         has_vllm = bool(config.providers.vllm.api_base)
         has_aihubmix = bool(config.providers.aihubmix.api_key)
+        has_github_copilot = bool(config.providers.github_copilot.api_key)
         
         console.print(f"OpenRouter API: {'[green]✓[/green]' if has_openrouter else '[dim]not set[/dim]'}")
         console.print(f"Anthropic API: {'[green]✓[/green]' if has_anthropic else '[dim]not set[/dim]'}")
@@ -649,8 +735,10 @@ def status():
         console.print(f"Gemini API: {'[green]✓[/green]' if has_gemini else '[dim]not set[/dim]'}")
         console.print(f"Zhipu AI API: {'[green]✓[/green]' if has_zhipu else '[dim]not set[/dim]'}")
         console.print(f"AiHubMix API: {'[green]✓[/green]' if has_aihubmix else '[dim]not set[/dim]'}")
+        console.print(f"GitHub Copilot: {'[green]✓[/green]' if has_github_copilot else '[dim]not set[/dim]'}")
         vllm_status = f"[green]✓ {config.providers.vllm.api_base}[/green]" if has_vllm else "[dim]not set[/dim]"
         console.print(f"vLLM/Local: {vllm_status}")
+
 
 
 if __name__ == "__main__":

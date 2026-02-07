@@ -162,6 +162,61 @@ nanobot agent -m "Hello from my local LLM!"
 > [!TIP]
 > The `apiKey` can be any non-empty string for local servers that don't require authentication.
 
+## 🤖 GitHub Copilot
+
+Use GitHub Copilot as your LLM provider with native OAuth authentication.
+
+**1. Login via GitHub device flow**
+
+```bash
+nanobot login-github-copilot
+```
+
+You'll be prompted to visit a GitHub URL and enter a one-time code.
+
+**2. Configure** (`~/.nanobot/config.json`)
+
+```json
+{
+  "providers": {
+    "githubCopilot": {
+      "apiKey": "${COPILOT_GITHUB_TOKEN}"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "github-copilot/gpt-4o"
+    }
+  }
+}
+```
+
+**3. Set environment variable**
+
+Add to your shell profile (~/.bashrc, ~/.zshrc, etc.):
+
+```bash
+export COPILOT_GITHUB_TOKEN='your_github_token_here'
+```
+
+**4. Chat**
+
+```bash
+nanobot agent -m "Hello from Copilot!"
+```
+
+**Supported models:**
+- `github-copilot/gpt-4o`
+- `github-copilot/gpt-4.1`
+- `github-copilot/gpt-4.1-mini`
+- `github-copilot/gpt-4.1-nano`
+- `github-copilot/o1`
+- `github-copilot/o1-mini`
+- `github-copilot/o3-mini`
+
+> [!NOTE]
+> Requires an active GitHub Copilot subscription.
+
 ## 💬 Chat Apps
 
 Talk to your nanobot through Telegram, Discord, WhatsApp, or Feishu — anytime, anywhere.
