@@ -127,6 +127,43 @@ nanobot agent -m "What is 2+2?"
 
 That's it! You have a working AI assistant in 2 minutes.
 
+## 🤖 GitHub Copilot Setup
+
+Use GitHub Copilot's powerful models through nanobot with automatic token management.
+
+### Authentication
+
+```bash
+# Login using OAuth Device Flow (recommended)
+nanobot login-copilot
+```
+
+This will:
+1. Open your browser for GitHub authorization
+2. Verify your Copilot subscription
+3. Save your token to `~/.nanobot/config.json`
+4. Token auto-refreshes every ~2 hours automatically!
+
+### Available Models
+
+- `github-copilot/gpt-4o` (recommended)
+- `github-copilot/gpt-4.1`
+- `github-copilot/gpt-4.1-mini`
+- `github-copilot/o1`
+- `github-copilot/o3-mini`
+
+### Usage
+
+```bash
+# Set as default
+nanobot config-set agents.defaults.model github-copilot/gpt-4o
+
+# Or use directly
+nanobot agent -m "Hello!" 
+```
+
+**Note:** Token auto-refreshes every ~2 hours. No manual intervention needed!
+
 ## 🖥️ Local Models (vLLM)
 
 Run nanobot with your own local models using vLLM or any OpenAI-compatible server.
@@ -425,6 +462,9 @@ That's it! Environment variables, model prefixing, config matching, and `nanobot
 | `nanobot agent` | Interactive chat mode |
 | `nanobot gateway` | Start the gateway |
 | `nanobot status` | Show status |
+| `nanobot login-copilot` | Login to GitHub Copilot |
+| `nanobot config-set <key> <value>` | Set a config value |
+| `nanobot config-show` | Show current config |
 | `nanobot channels login` | Link WhatsApp (scan QR) |
 | `nanobot channels status` | Show channel status |
 
