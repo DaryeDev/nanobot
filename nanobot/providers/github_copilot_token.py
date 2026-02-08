@@ -38,15 +38,15 @@ def load_cached_token() -> CachedCopilotToken | None:
     cache_path = get_cache_path()
     if not cache_path.exists():
         return None
-    
+
     try:
         with open(cache_path) as f:
             data = json.load(f)
-        
+
         # Validate required fields
         if not all(k in data for k in ("token", "expires_at", "base_url")):
             return None
-        
+
         return CachedCopilotToken(
             token=data["token"],
             expires_at=data["expires_at"],
@@ -78,21 +78,21 @@ def is_token_valid(token_data: CachedCopilotToken, buffer_seconds: int = 300) ->
 def derive_copilot_api_base_url(token: str) -> str:
     """
     Extract base URL from Copilot token metadata.
-    
+
     Copilot tokens contain metadata in format: "token;proxy-ep=proxy.example.com;"
     Converts: proxy.example.com → https://api.example.com
-    
+
     Args:
         token: Copilot API token with embedded metadata
-    
+
     Returns:
         Base URL string (defaults to individual Copilot endpoint)
     """
     default_url = "https://api.individual.githubcopilot.com"
-    
+
     if ";" not in token:
         return default_url
-    
+
     try:
         # Parse metadata from token
         parts = token.split(";")
@@ -105,20 +105,20 @@ def derive_copilot_api_base_url(token: str) -> str:
                     return f"https://{api_host}"
     except Exception as e:
         logger.debug(f"Failed to parse token metadata: {e}")
-    
+
     return default_url
 
 
 async def exchange_github_token_for_copilot(github_token: str) -> dict[str, Any]:
     """
     Exchange a GitHub token for a Copilot API token.
-    
+
     Args:
         github_token: GitHub OAuth or personal access token
-    
+
     Returns:
         Dict with keys: token, expires_at, base_url
-    
+
     Raises:
         httpx.HTTPStatusError: If the request fails
     """
@@ -127,19 +127,19 @@ async def exchange_github_token_for_copilot(github_token: str) -> dict[str, Any]
         "Authorization": f"token {github_token}",
         "Accept": "application/json",
     }
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
-    
+
     # Parse response
     token = data.get("token", "")
     expires_at = data.get("expires_at", 0)
-    
+
     # Derive base URL from token
     base_url = derive_copilot_api_base_url(token)
-    
+
     return {
         "token": token,
         "expires_at": expires_at,
@@ -150,19 +150,19 @@ async def exchange_github_token_for_copilot(github_token: str) -> dict[str, Any]
 async def resolve_copilot_api_token(github_token: str) -> dict[str, Any]:
     """
     Resolve a Copilot API token, using cache if valid or refreshing if needed.
-    
+
     This is the main entry point for getting a Copilot token. It:
     1. Checks if there's a valid cached token (with 5-minute buffer)
     2. If not, exchanges the GitHub token for a new Copilot token
     3. Saves the new token to cache
     4. Returns token data
-    
+
     Args:
         github_token: GitHub OAuth or personal access token
-    
+
     Returns:
         Dict with keys: token (str), expires_at (int), source (str), base_url (str)
-    
+
     Raises:
         httpx.HTTPStatusError: If token exchange fails
     """
@@ -176,11 +176,11 @@ async def resolve_copilot_api_token(github_token: str) -> dict[str, Any]:
             "source": "cache",
             "base_url": cached.base_url,
         }
-    
+
     # Cache miss or expired - get fresh token
     logger.debug("Refreshing Copilot token from GitHub")
     token_data = await exchange_github_token_for_copilot(github_token)
-    
+
     # Save to cache
     cached_token = CachedCopilotToken(
         token=token_data["token"],
@@ -189,7 +189,7 @@ async def resolve_copilot_api_token(github_token: str) -> dict[str, Any]:
         source="fresh"
     )
     save_cached_token(cached_token)
-    
+
     return {
         "token": token_data["token"],
         "expires_at": token_data["expires_at"],

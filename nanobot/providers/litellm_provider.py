@@ -14,15 +14,15 @@ from nanobot.providers.registry import find_by_model, find_gateway
 class LiteLLMProvider(LLMProvider):
     """
     LLM provider using LiteLLM for multi-provider support.
-    
+
     Supports OpenRouter, Anthropic, OpenAI, Gemini, and many other providers through
     a unified interface.  Provider-specific logic is driven by the registry
     (see providers/registry.py) — no if-elif chains needed here.
     """
-    
+
     def __init__(
-        self, 
-        api_key: str | None = None, 
+        self,
+        api_key: str | None = None,
         api_base: str | None = None,
         default_model: str = "anthropic/claude-opus-4-5",
         extra_headers: dict[str, str] | None = None,
@@ -30,35 +30,35 @@ class LiteLLMProvider(LLMProvider):
         super().__init__(api_key, api_base)
         self.default_model = default_model
         self.extra_headers = extra_headers or {}
-        
+
         # Detect gateway / local deployment from api_key and api_base
         self._gateway = find_gateway(api_key, api_base)
-        
+
         # Detect GitHub Copilot
         self._is_github_copilot = api_base and "githubcopilot.com" in api_base.lower()
-        
+
         # Backwards-compatible flags (used by tests and possibly external code)
         self.is_openrouter = bool(self._gateway and self._gateway.name == "openrouter")
         self.is_aihubmix = bool(self._gateway and self._gateway.name == "aihubmix")
         self.is_vllm = bool(self._gateway and self._gateway.is_local)
-        
+
         # Configure environment variables
         if api_key:
             self._setup_env(api_key, api_base, default_model)
-        
+
         if api_base:
             litellm.api_base = api_base
-        
+
         # Disable LiteLLM logging noise
         litellm.suppress_debug_info = True
-    
+
     def _setup_env(self, api_key: str, api_base: str | None, model: str) -> None:
         """Set environment variables based on detected provider."""
         if self._gateway:
             # Gateway / local: direct set (not setdefault)
             os.environ[self._gateway.env_key] = api_key
             return
-        
+
         # Standard provider: match by model name
         spec = find_by_model(model)
         if spec:
@@ -71,7 +71,7 @@ class LiteLLMProvider(LLMProvider):
                 resolved = env_val.replace("{api_key}", api_key)
                 resolved = resolved.replace("{api_base}", effective_base)
                 os.environ.setdefault(env_name, resolved)
-    
+
     def _resolve_model(self, model: str) -> str:
         """Resolve model name by applying provider/gateway prefixes."""
         if self._gateway:
@@ -82,15 +82,15 @@ class LiteLLMProvider(LLMProvider):
             if prefix and not model.startswith(f"{prefix}/"):
                 model = f"{prefix}/{model}"
             return model
-        
+
         # Standard mode: auto-prefix for known providers
         spec = find_by_model(model)
         if spec and spec.litellm_prefix:
             if not any(model.startswith(s) for s in spec.skip_prefixes):
                 model = f"{spec.litellm_prefix}/{model}"
-        
+
         return model
-    
+
     def _apply_model_overrides(self, model: str, kwargs: dict[str, Any]) -> None:
         """Apply model-specific parameter overrides from the registry."""
         model_lower = model.lower()
@@ -100,33 +100,33 @@ class LiteLLMProvider(LLMProvider):
                 if pattern in model_lower:
                     kwargs.update(overrides)
                     return
-    
+
     async def _refresh_copilot_token_if_needed(self) -> None:
         """Auto-refresh GitHub Copilot token before each request."""
         if not self._is_github_copilot:
             return
-        
+
         github_token = os.environ.get("COPILOT_GITHUB_TOKEN") or self.api_key
         if not github_token:
             return
-        
+
         try:
             from nanobot.providers.github_copilot_token import resolve_copilot_api_token
-            
+
             token_data = await resolve_copilot_api_token(github_token)
-            
+
             # Update environment with fresh token
             os.environ["GITHUB_COPILOT_TOKEN"] = token_data["token"]
-            
+
             # Update base URL if it changed
             if token_data["base_url"] != self.api_base:
                 self.api_base = token_data["base_url"]
                 litellm.api_base = token_data["base_url"]
-                
+
         except Exception as e:
             from loguru import logger
             logger.warning(f"Failed to refresh Copilot token: {e}")
-    
+
     async def chat(
         self,
         messages: list[dict[str, Any]],
@@ -137,44 +137,44 @@ class LiteLLMProvider(LLMProvider):
     ) -> LLMResponse:
         """
         Send a chat completion request via LiteLLM.
-        
+
         Args:
             messages: List of message dicts with 'role' and 'content'.
             tools: Optional list of tool definitions in OpenAI format.
             model: Model identifier (e.g., 'anthropic/claude-sonnet-4-5').
             max_tokens: Maximum tokens in response.
             temperature: Sampling temperature.
-        
+
         Returns:
             LLMResponse with content and/or tool calls.
         """
         # Auto-refresh Copilot token if needed
         await self._refresh_copilot_token_if_needed()
-        
+
         model = self._resolve_model(model or self.default_model)
-        
+
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
-        
+
         # Apply model-specific overrides (e.g. kimi-k2.5 temperature)
         self._apply_model_overrides(model, kwargs)
-        
+
         # Pass api_base directly for custom endpoints (vLLM, etc.)
         if self.api_base:
             kwargs["api_base"] = self.api_base
-        
+
         # Pass extra headers (e.g. APP-Code for AiHubMix)
         if self.extra_headers:
             kwargs["extra_headers"] = self.extra_headers
-        
+
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
-        
+
         try:
             response = await acompletion(**kwargs)
             return self._parse_response(response)
@@ -184,12 +184,12 @@ class LiteLLMProvider(LLMProvider):
                 content=f"Error calling LLM: {str(e)}",
                 finish_reason="error",
             )
-    
+
     def _parse_response(self, response: Any) -> LLMResponse:
         """Parse LiteLLM response into our standard format."""
         choice = response.choices[0]
         message = choice.message
-        
+
         tool_calls = []
         if hasattr(message, "tool_calls") and message.tool_calls:
             for tc in message.tool_calls:
@@ -200,13 +200,13 @@ class LiteLLMProvider(LLMProvider):
                         args = json.loads(args)
                     except json.JSONDecodeError:
                         args = {"raw": args}
-                
+
                 tool_calls.append(ToolCallRequest(
                     id=tc.id,
                     name=tc.function.name,
                     arguments=args,
                 ))
-        
+
         usage = {}
         if hasattr(response, "usage") and response.usage:
             usage = {
@@ -214,14 +214,14 @@ class LiteLLMProvider(LLMProvider):
                 "completion_tokens": response.usage.completion_tokens,
                 "total_tokens": response.usage.total_tokens,
             }
-        
+
         return LLMResponse(
             content=message.content,
             tool_calls=tool_calls,
             finish_reason=choice.finish_reason or "stop",
             usage=usage,
         )
-    
+
     def get_default_model(self) -> str:
         """Get the default model."""
         return self.default_model
