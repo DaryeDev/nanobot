@@ -283,6 +283,28 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         strip_model_prefix=False,
         model_overrides=(),
     ),
+
+    # GitHub Copilot: uses OpenAI-compatible format via LiteLLM.
+    # Token auto-refreshes every ~2 hours via github_copilot_token module.
+    # COPILOT_GITHUB_TOKEN env var stores the GitHub OAuth token used for refresh.
+    ProviderSpec(
+        name="github_copilot",
+        keywords=("github-copilot", "copilot", "gpt-4o", "gpt-4.1", "o1", "o3"),
+        env_key="GITHUB_COPILOT_TOKEN",
+        display_name="GitHub Copilot",
+        litellm_prefix="openai",            # Copilot uses OpenAI-compatible format
+        skip_prefixes=(),
+        env_extras=(
+            ("COPILOT_GITHUB_TOKEN", "{api_key}"),
+        ),
+        is_gateway=False,
+        is_local=False,
+        detect_by_key_prefix="",
+        detect_by_base_keyword="githubcopilot",
+        default_api_base="https://api.individual.githubcopilot.com",
+        strip_model_prefix=False,
+        model_overrides=(),
+    ),
 )
 
 

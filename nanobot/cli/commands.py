@@ -616,6 +616,130 @@ def cron_run(
 
 
 # ============================================================================
+# GitHub Copilot Commands
+# ============================================================================
+
+
+@app.command()
+def login_copilot(
+    verify: bool = typer.Option(True, "--verify/--no-verify", help="Verify Copilot access after authentication"),
+):
+    """Authenticate with GitHub Copilot using OAuth Device Flow."""
+    asyncio.run(_login_copilot_async(verify))
+
+
+async def _login_copilot_async(verify: bool):
+    """Async implementation of login-copilot command."""
+    from nanobot.providers.github_copilot_auth import login_github_copilot, verify_copilot_access
+    from nanobot.config.loader import load_config, save_config
+    
+    # Step 1: Login via OAuth
+    github_token = await login_github_copilot()
+    if not github_token:
+        console.print("[red]Login failed.[/red]")
+        raise typer.Exit(1)
+    
+    # Step 2: Verify access (optional)
+    if verify:
+        console.print("[cyan]Verifying Copilot access...[/cyan]")
+        if not await verify_copilot_access(github_token):
+            raise typer.Exit(1)
+        console.print("[green]✓ Copilot access verified![/green]\n")
+    
+    # Step 3: Save to config
+    config = load_config()
+    config.providers.github_copilot.api_key = github_token
+    save_config(config)
+    console.print(f"[green]✓ Token saved to config[/green]\n")
+    
+    # Step 4: Show next steps
+    console.print("[bold cyan]Next steps:[/bold cyan]")
+    console.print("  1. Set as default model:")
+    console.print("     [dim]nanobot config-set agents.defaults.model github-copilot/gpt-4o[/dim]\n")
+    console.print("  2. Or use directly:")
+    console.print("     [dim]nanobot agent -m \"Hello!\"[/dim]\n")
+    console.print("[bold]Available models:[/bold]")
+    console.print("  • github-copilot/gpt-4o (recommended)")
+    console.print("  • github-copilot/gpt-4.1")
+    console.print("  • github-copilot/gpt-4.1-mini")
+    console.print("  • github-copilot/o1")
+    console.print("  • github-copilot/o3-mini")
+    console.print("\n[dim]Note: Token auto-refreshes every ~2 hours. No manual intervention needed![/dim]")
+
+
+# ============================================================================
+# Config Commands
+# ============================================================================
+
+
+@app.command()
+def config_set(
+    key: str = typer.Argument(..., help="Config key in dot notation (e.g., agents.defaults.model)"),
+    value: str = typer.Argument(..., help="Value to set"),
+):
+    """Set a configuration value."""
+    from nanobot.config.loader import load_config, save_config
+    
+    config = load_config()
+    
+    # Parse dot notation
+    parts = key.split(".")
+    obj = config
+    
+    try:
+        # Navigate to the parent object
+        for part in parts[:-1]:
+            obj = getattr(obj, part)
+        
+        # Set the value
+        final_key = parts[-1]
+        current_value = getattr(obj, final_key)
+        
+        # Convert value to appropriate type
+        if isinstance(current_value, bool):
+            value = value.lower() in ("true", "1", "yes")
+        elif isinstance(current_value, int):
+            value = int(value)
+        elif isinstance(current_value, float):
+            value = float(value)
+        
+        setattr(obj, final_key, value)
+        save_config(config)
+        console.print(f"[green]✓[/green] Set {key} = {value}")
+    
+    except AttributeError:
+        console.print(f"[red]Error: Invalid config key '{key}'[/red]")
+        raise typer.Exit(1)
+    except ValueError as e:
+        console.print(f"[red]Error: Invalid value - {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def config_show():
+    """Show current configuration."""
+    from nanobot.config.loader import load_config, get_config_path
+    import json
+    
+    config_path = get_config_path()
+    
+    if not config_path.exists():
+        console.print("[yellow]No configuration file found.[/yellow]")
+        console.print("Run [cyan]nanobot onboard[/cyan] to create one.")
+        raise typer.Exit(1)
+    
+    console.print(f"\n[bold]Configuration[/bold] ({config_path})\n")
+    
+    with open(config_path) as f:
+        data = json.load(f)
+    
+    # Pretty print JSON with syntax highlighting
+    from rich.syntax import Syntax
+    syntax = Syntax(json.dumps(data, indent=2), "json", theme="monokai", line_numbers=False)
+    console.print(syntax)
+
+
+# ============================================================================
 # Status Commands
 # ============================================================================
 

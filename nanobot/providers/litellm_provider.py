@@ -34,6 +34,9 @@ class LiteLLMProvider(LLMProvider):
         # Detect gateway / local deployment from api_key and api_base
         self._gateway = find_gateway(api_key, api_base)
         
+        # Detect GitHub Copilot
+        self._is_github_copilot = api_base and "githubcopilot.com" in api_base.lower()
+        
         # Backwards-compatible flags (used by tests and possibly external code)
         self.is_openrouter = bool(self._gateway and self._gateway.name == "openrouter")
         self.is_aihubmix = bool(self._gateway and self._gateway.name == "aihubmix")
@@ -98,6 +101,32 @@ class LiteLLMProvider(LLMProvider):
                     kwargs.update(overrides)
                     return
     
+    async def _refresh_copilot_token_if_needed(self) -> None:
+        """Auto-refresh GitHub Copilot token before each request."""
+        if not self._is_github_copilot:
+            return
+        
+        github_token = os.environ.get("COPILOT_GITHUB_TOKEN") or self.api_key
+        if not github_token:
+            return
+        
+        try:
+            from nanobot.providers.github_copilot_token import resolve_copilot_api_token
+            
+            token_data = await resolve_copilot_api_token(github_token)
+            
+            # Update environment with fresh token
+            os.environ["GITHUB_COPILOT_TOKEN"] = token_data["token"]
+            
+            # Update base URL if it changed
+            if token_data["base_url"] != self.api_base:
+                self.api_base = token_data["base_url"]
+                litellm.api_base = token_data["base_url"]
+                
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"Failed to refresh Copilot token: {e}")
+    
     async def chat(
         self,
         messages: list[dict[str, Any]],
@@ -119,6 +148,9 @@ class LiteLLMProvider(LLMProvider):
         Returns:
             LLMResponse with content and/or tool calls.
         """
+        # Auto-refresh Copilot token if needed
+        await self._refresh_copilot_token_if_needed()
+        
         model = self._resolve_model(model or self.default_model)
         
         kwargs: dict[str, Any] = {
