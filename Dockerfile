@@ -1,7 +1,13 @@
+# To disable WhatsApp bridge setup, build with:
+# docker build --build-arg SETUP_WHATSAPP=false -t nanobot .
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-# Install Node.js 20 for the WhatsApp bridge
-RUN apt-get update && \
+ARG SETUP_WHATSAPP=true
+
+# Install Node.js 20 for the WhatsApp bridge (Optional)
+RUN if [ "$SETUP_WHATSAPP" = "true" ]; then \
+    apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates gnupg git && \
     mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
@@ -10,7 +16,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get purge -y gnupg && \
     apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*; \
+    fi
 
 WORKDIR /app
 
@@ -25,9 +32,11 @@ COPY nanobot/ nanobot/
 COPY bridge/ bridge/
 RUN uv pip install --system --no-cache .
 
-# Build the WhatsApp bridge
+# Build the WhatsApp bridge (Optional)
 WORKDIR /app/bridge
-RUN npm install && npm run build
+RUN if [ "$SETUP_WHATSAPP" = "true" ]; then \
+    npm install && npm run build; \
+    fi
 WORKDIR /app
 
 # Create config directory
