@@ -340,9 +340,20 @@ class TelegramChannel(BaseChannel):
                 
                 # Handle voice transcription
                 if media_type == "voice" or media_type == "audio":
-                    from nanobot.providers.transcription import GroqTranscriptionProvider
-                    transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
+                    if self.groq_api_key:
+                        from nanobot.providers.transcription import GroqTranscriptionProvider
+                        transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
+                    else:
+                        from nanobot.providers.transcription import GoogleTranscriptionProvider
+                        transcriber = GoogleTranscriptionProvider()
+
                     transcription = await transcriber.transcribe(file_path)
+
+                    try:
+                        file_path.unlink()
+                    except Exception as e:
+                        logger.warning(f"Failed to delete audio file {file_path}: {e}")
+                    
                     if transcription:
                         logger.info(f"Transcribed {media_type}: {transcription[:50]}...")
                         content_parts.append(f"[transcription: {transcription}]")
