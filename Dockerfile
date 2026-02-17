@@ -1,5 +1,5 @@
-# To enable WhatsApp bridge setup, build with:
-# docker build --build-arg SETUP_WHATSAPP=true -t nanobot .
+# To disable WhatsApp bridge setup, build with:
+# docker build --build-arg SETUP_WHATSAPP=false -t nanobot .
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
