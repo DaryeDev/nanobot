@@ -723,46 +723,49 @@ def cron_list(
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
     
-    jobs = service.list_jobs(include_disabled=all)
-    
-    if not jobs:
-        console.print("No scheduled jobs.")
-        return
-    
-    table = Table(title="Scheduled Jobs")
-    table.add_column("ID", style="cyan")
-    table.add_column("Name")
-    table.add_column("Schedule")
-    table.add_column("Status")
-    table.add_column("Next Run")
-    
-    import time
-    from datetime import datetime as _dt
-    from zoneinfo import ZoneInfo
-    for job in jobs:
-        # Format schedule
-        if job.schedule.kind == "every":
-            sched = f"every {(job.schedule.every_ms or 0) // 1000}s"
-        elif job.schedule.kind == "cron":
-            sched = f"{job.schedule.expr or ''} ({job.schedule.tz})" if job.schedule.tz else (job.schedule.expr or "")
-        else:
-            sched = "one-time"
+    async def run():
+        jobs = await service.list_jobs(include_disabled=all)
         
-        # Format next run
-        next_run = ""
-        if job.state.next_run_at_ms:
-            ts = job.state.next_run_at_ms / 1000
-            try:
-                tz = ZoneInfo(job.schedule.tz) if job.schedule.tz else None
-                next_run = _dt.fromtimestamp(ts, tz).strftime("%Y-%m-%d %H:%M")
-            except Exception:
-                next_run = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+        if not jobs:
+            console.print("No scheduled jobs.")
+            return
         
-        status = "[green]enabled[/green]" if job.enabled else "[dim]disabled[/dim]"
+        table = Table(title="Scheduled Jobs")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name")
+        table.add_column("Schedule")
+        table.add_column("Status")
+        table.add_column("Next Run")
         
-        table.add_row(job.id, job.name, sched, status, next_run)
+        import time
+        from datetime import datetime as _dt
+        from zoneinfo import ZoneInfo
+        for job in jobs:
+            # Format schedule
+            if job.schedule.kind == "every":
+                sched = f"every {(job.schedule.every_ms or 0) // 1000}s"
+            elif job.schedule.kind == "cron":
+                sched = f"{job.schedule.expr or ''} ({job.schedule.tz})" if job.schedule.tz else (job.schedule.expr or "")
+            else:
+                sched = "one-time"
+            
+            # Format next run
+            next_run = ""
+            if job.state.next_run_at_ms:
+                ts = job.state.next_run_at_ms / 1000
+                try:
+                    tz = ZoneInfo(job.schedule.tz) if job.schedule.tz else None
+                    next_run = _dt.fromtimestamp(ts, tz).strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    next_run = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+
+            status = "[green]enabled[/green]" if job.enabled else "[dim]disabled[/dim]"
+            
+            table.add_row(job.id, job.name, sched, status, next_run)
+        
+        console.print(table)
     
-    console.print(table)
+    asyncio.run(run())
 
 
 @cron_app.command("add")
@@ -802,16 +805,18 @@ def cron_add(
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
     
-    job = service.add_job(
-        name=name,
-        schedule=schedule,
-        message=message,
-        deliver=deliver,
-        to=to,
-        channel=channel,
-    )
+    async def run():
+        job = await service.add_job(
+            name=name,
+            schedule=schedule,
+            message=message,
+            deliver=deliver,
+            to=to,
+            channel=channel,
+        )
+        console.print(f"[green]✓[/green] Added job '{job.name}' ({job.id})")
     
-    console.print(f"[green]✓[/green] Added job '{job.name}' ({job.id})")
+    asyncio.run(run())
 
 
 @cron_app.command("remove")
@@ -825,10 +830,13 @@ def cron_remove(
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
     
-    if service.remove_job(job_id):
-        console.print(f"[green]✓[/green] Removed job {job_id}")
-    else:
-        console.print(f"[red]Job {job_id} not found[/red]")
+    async def run():
+        if await service.remove_job(job_id):
+            console.print(f"[green]✓[/green] Removed job {job_id}")
+        else:
+            console.print(f"[red]Job {job_id} not found[/red]")
+    
+    asyncio.run(run())
 
 
 @cron_app.command("enable")
@@ -843,12 +851,15 @@ def cron_enable(
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
     
-    job = service.enable_job(job_id, enabled=not disable)
-    if job:
-        status = "disabled" if disable else "enabled"
-        console.print(f"[green]✓[/green] Job '{job.name}' {status}")
-    else:
-        console.print(f"[red]Job {job_id} not found[/red]")
+    async def run():
+        job = await service.enable_job(job_id, enabled=not disable)
+        if job:
+            status = "disabled" if disable else "enabled"
+            console.print(f"[green]✓[/green] Job '{job.name}' {status}")
+        else:
+            console.print(f"[red]Job {job_id} not found[/red]")
+    
+    asyncio.run(run())
 
 
 @cron_app.command("run")
