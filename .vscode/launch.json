@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Nanobot agent command",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/nanobot/__main__.py",
+            "console": "integratedTerminal",
+            "args": [
+                "agent",
+                "-m",
+                "hola :D"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug Nanobot Gateway",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/nanobot/__main__.py",
+            "console": "integratedTerminal",
+            "args": [
+                "gateway"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
