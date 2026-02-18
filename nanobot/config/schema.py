@@ -235,6 +235,7 @@ class StreamToolCallingConfig(Base):
     """Stream tool calling configuration."""
 
     enabled: bool = False
+    template: str = "{{tool}}"
     toolsBlacklist: list[str] = Field(default_factory=list)
     channelsBlacklist: list[str] = Field(default_factory=list)
 
