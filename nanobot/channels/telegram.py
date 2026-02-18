@@ -321,6 +321,8 @@ class TelegramChannel(BaseChannel):
         elif message.document:
             media_file = message.document
             media_type = "file"
+
+        transcribed = False
         
         # Download media if present
         if media_file and self._app:
@@ -339,7 +341,6 @@ class TelegramChannel(BaseChannel):
                 media_paths.append(str(file_path))
                 
                 # Handle voice transcription
-                transcribed = False
                 if media_type == "voice" or media_type == "audio":
                     if self.groq_api_key:
                         from nanobot.providers.transcription import GroqTranscriptionProvider
