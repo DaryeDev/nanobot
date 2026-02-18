@@ -356,8 +356,8 @@ class AgentLoop:
         userMessageToModel = msg.content
 
         if speechConfig.enabled and (speechConfig.always_answer_with_audio or msg.metadata.get("wasAudio")):
-            userMessageToModel = "[AUDIO ANSWER]\n\n"+userMessageToModel
-        
+            userMessageToModel = "[AUDIO ANSWER]\n\n" + userMessageToModel
+
         initial_messages = self.context.build_messages(
             history=session.get_history(max_messages=self.memory_window),
             current_message=userMessageToModel,
