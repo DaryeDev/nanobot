@@ -372,12 +372,14 @@ class AgentLoop:
 
         async def _bus_progress(content: str) -> None:
             config = load_config()
-            if config.tools.streamToolCalling.enabled:
-                if msg.channel in config.tools.streamToolCalling.channelsBlacklist or content.split("(")[0] in config.tools.streamToolCalling.toolsBlacklist:
+            streamToolCallingConfig = config.tools.streamToolCalling
+            
+            if streamToolCallingConfig.enabled:
+                if msg.channel in streamToolCallingConfig.channelsBlacklist or content.split("(")[0] in streamToolCallingConfig.toolsBlacklist:
                     return
             
             await self.bus.publish_outbound(OutboundMessage(
-                channel=msg.channel, chat_id=msg.chat_id, content=content,
+                channel=msg.channel, chat_id=msg.chat_id, content=streamToolCallingConfig.template.replace("{{tool}}", content),
                 metadata=msg.metadata or {},
             ))
 
