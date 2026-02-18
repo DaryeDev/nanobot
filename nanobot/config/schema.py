@@ -231,11 +231,12 @@ class GatewayConfig(Base):
     port: int = 18790
 
 
-class StreamToolCallingConfig(Base):
-    """Stream tool calling configuration."""
+class ThinkingToolUseStreamingConfig(Base):
+    """Thinking tool use streaming configuration."""
 
-    enabled: bool = False
-    template: str = "{{tool}}"
+    enabled: bool = True
+    toolUsageTemplate: str = "\u2699\uFE0F: `{{tool}}`"
+    thinkingTemplate: str = "\uD83E\uDDE0: `{{thought}}`"
     toolsBlacklist: list[str] = Field(default_factory=list)
     channelsBlacklist: list[str] = Field(default_factory=list)
 
@@ -271,7 +272,7 @@ class MCPServerConfig(Base):
 class ToolsConfig(Base):
     """Tools configuration."""
 
-    streamToolCalling: StreamToolCallingConfig = Field(default_factory=StreamToolCallingConfig)
+    thinkingToolUseStreaming: ThinkingToolUseStreamingConfig = Field(default_factory=ThinkingToolUseStreamingConfig)
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
     restrict_to_workspace: bool = False  # If true, restrict all tool access to workspace directory
