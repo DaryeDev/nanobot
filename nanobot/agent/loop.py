@@ -370,16 +370,23 @@ class AgentLoop:
         session.add_message("user", msg.content)
         self.sessions.save(session)
 
+        config = load_config()
+        thinkingToolUseStreamingConfig = config.tools.thinkingToolUseStreaming
         async def _bus_progress(content: str) -> None:
-            config = load_config()
-            streamToolCallingConfig = config.tools.streamToolCalling
-            
-            if streamToolCallingConfig.enabled:
-                if msg.channel in streamToolCallingConfig.channelsBlacklist or content.split("(")[0] in streamToolCallingConfig.toolsBlacklist:
-                    return
+            if thinkingToolUseStreamingConfig.enabled:
+                posibleToolName = content.split("(")[0]
+                tool = self.tools.get(posibleToolName)
+                if tool:
+                    content = thinkingToolUseStreamingConfig.toolUsageTemplate.replace("{{tool}}", content)
+                    if msg.channel in thinkingToolUseStreamingConfig.channelsBlacklist or tool.name in thinkingToolUseStreamingConfig.toolsBlacklist:
+                        return
+                else:
+                    content = thinkingToolUseStreamingConfig.thinkingTemplate.replace("{{thought}}", content)
+                    if msg.channel in thinkingToolUseStreamingConfig.channelsBlacklist or "thinking" in thinkingToolUseStreamingConfig.toolsBlacklist:
+                        return
             
             await self.bus.publish_outbound(OutboundMessage(
-                channel=msg.channel, chat_id=msg.chat_id, content=streamToolCallingConfig.template.replace("{{tool}}", content),
+                channel=msg.channel, chat_id=msg.chat_id, content=content,
                 metadata=msg.metadata or {},
             ))
 
