@@ -24,6 +24,7 @@ from nanobot.agent.tools.cron import CronTool
 from nanobot.agent.memory import MemoryStore
 from nanobot.agent.subagent import SubagentManager
 from nanobot.session.manager import Session, SessionManager
+from nanobot.config.loader import load_config
 
 
 class AgentLoop:
@@ -349,18 +350,26 @@ class AgentLoop:
 
         self._set_tool_context(msg.channel, msg.chat_id)
         
-        # Add user message to session immediately
-        session.add_message("user", msg.content)
-        self.sessions.save(session)
+        config = load_config()
+        speechConfig = config.speech or {}
+
+        userMessageToModel = msg.content
+
+        if speechConfig.enabled and (speechConfig.always_answer_with_audio or msg.metadata.get("wasAudio")):
+            userMessageToModel = "[AUDIO ANSWER]\n\n"+userMessageToModel
         
         initial_messages = self.context.build_messages(
             history=session.get_history(max_messages=self.memory_window),
-            current_message=msg.content,
+            current_message=userMessageToModel,
             media=msg.media if msg.media else None,
             channel=msg.channel,
             chat_id=msg.chat_id,
         )
 
+        # Add user message to session
+        session.add_message("user", msg.content)
+        self.sessions.save(session)
+        
         async def _bus_progress(content: str) -> None:
             await self.bus.publish_outbound(OutboundMessage(
                 channel=msg.channel, chat_id=msg.chat_id, content=content,
@@ -373,6 +382,19 @@ class AgentLoop:
 
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
+
+        audioAnswerPath = None
+        sendMessageAsText = True
+        if speechConfig.enabled and final_content and (speechConfig.always_answer_with_audio or msg.metadata.get("wasAudio")):
+            from nanobot.providers.speech import EdgeTextToSpeechProvider
+            tts = EdgeTextToSpeechProvider(voice=speechConfig.voice, rate=speechConfig.rate)
+            audio_path = Path.home() / ".nanobot" / "media" / f"tts_{msg.session_key}.ogg"
+            result = await tts.synthesize(final_content, audio_path)
+            if result:
+                audioAnswerPath = str(result)
+
+                if not speechConfig.send_transcription:
+                    sendMessageAsText = False
         
         preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
         logger.info(f"Response to {msg.channel}:{msg.sender_id}: {preview}")
@@ -384,8 +406,9 @@ class AgentLoop:
         return OutboundMessage(
             channel=msg.channel,
             chat_id=msg.chat_id,
-            content=final_content,
+            content=final_content if sendMessageAsText else "[empty message]",
             metadata=msg.metadata or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
+            media=[audioAnswerPath] if audioAnswerPath else None,
         )
     
     async def _process_system_message(self, msg: InboundMessage) -> OutboundMessage | None:

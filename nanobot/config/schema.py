@@ -268,6 +268,14 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
+class SpeechConfig(BaseModel):
+    """Speech configuration."""
+    enabled: bool = False
+    voice: str = "en-US-AndrewMultilingualNeural"
+    rate: float = 1.0
+    always_answer_with_audio: bool = False
+    send_transcription: bool = False
+
 class Config(BaseSettings):
     """Root configuration for nanobot."""
 
@@ -276,6 +284,7 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    speech: SpeechConfig = Field(default_factory=SpeechConfig)
 
     @property
     def workspace_path(self) -> Path:
