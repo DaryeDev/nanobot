@@ -24,6 +24,7 @@ from nanobot.agent.tools.cron import CronTool
 from nanobot.agent.memory import MemoryStore
 from nanobot.agent.subagent import SubagentManager
 from nanobot.session.manager import Session, SessionManager
+from nanobot.config.loader import load_config
 
 
 class AgentLoop:
@@ -331,6 +332,11 @@ class AgentLoop:
         )
 
         async def _bus_progress(content: str) -> None:
+            config = load_config()
+            if config.tools.streamToolCalling.enabled:
+                if msg.channel in config.tools.streamToolCalling.channelsBlacklist or content.split("(")[0] in config.tools.streamToolCalling.toolsBlacklist:
+                    return
+            
             await self.bus.publish_outbound(OutboundMessage(
                 channel=msg.channel, chat_id=msg.chat_id, content=content,
                 metadata=msg.metadata or {},
