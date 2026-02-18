@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Nanobot agent command",
+            "name": "Debug Nanobot CLI - Agent command",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/nanobot/__main__.py",
@@ -13,12 +13,12 @@
             "args": [
                 "agent",
                 "-m",
-                "hola :D"
+                "${input:cliAgentMessage}"
             ],
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Debug Nanobot Gateway",
+            "name": "Debug Nanobot CLI - Gateway command",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/nanobot/__main__.py",
@@ -27,6 +27,14 @@
                 "gateway"
             ],
             "cwd": "${workspaceFolder}"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cliAgentMessage",
+            "type": "promptString",
+            "description": "Message to send to the agent:",
+            "default": "Hi! :D"
         }
     ]
 }
