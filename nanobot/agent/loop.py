@@ -339,7 +339,7 @@ class AgentLoop:
                 tool = self.tools.get(posibleToolName)
                 if tool:
                     content = thinkingToolUseStreamingConfig.toolUsageTemplate.replace("{{tool}}", content)
-                    if msg.channel in thinkingToolUseStreamingConfig.channelsBlacklist or tool.name in thinkingToolUseStreamingConfig.toolsBlacklist:
+                    if msg.channel in thinkingToolUseStreamingConfig.channelsBlacklist or tool.name in thinkingToolUseStreamingConfig.toolsBlacklist or "*" in thinkingToolUseStreamingConfig.toolsBlacklist:
                         return
                 else:
                     content = thinkingToolUseStreamingConfig.thinkingTemplate.replace("{{thought}}", content)
