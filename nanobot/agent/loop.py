@@ -373,6 +373,9 @@ class AgentLoop:
         config = load_config()
         thinkingToolUseStreamingConfig = config.tools.thinkingToolUseStreaming
         async def _bus_progress(content: str) -> None:
+            if session.key == "heartbeat":
+                return
+            
             if thinkingToolUseStreamingConfig.enabled:
                 posibleToolName = content.split("(")[0]
                 tool = self.tools.get(posibleToolName)
@@ -587,7 +590,7 @@ Respond with ONLY valid JSON, no markdown fences."""
             channel=channel,
             sender_id="user",
             chat_id=chat_id,
-            content=content
+            content=content,
         )
         
         response = await self._process_message(msg, session_key=session_key, on_progress=on_progress)
