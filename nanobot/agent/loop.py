@@ -373,6 +373,9 @@ class AgentLoop:
         self.sessions.save(session)
 
         async def _bus_progress(content: str) -> None:
+            if session.key == "heartbeat":
+                return
+            
             # Reload config per progress message to get the latest config
             config = load_config()
             thinkingToolUseStreamingConfig = config.tools.thinkingToolUseStreaming
