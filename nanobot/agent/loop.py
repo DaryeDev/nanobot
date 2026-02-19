@@ -368,8 +368,9 @@ class AgentLoop:
             chat_id=msg.chat_id,
         )
 
-        # Add user message to session
-        session.add_message("user", msg.content)
+        # Add user message to session, only if its not a heartbeat (generic prompt spam on heartbeat session)
+        if session.key != "heartbeat":
+            session.add_message("user", msg.content)
         self.sessions.save(session)
 
         async def _bus_progress(content: str) -> None:
