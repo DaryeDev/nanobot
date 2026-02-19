@@ -331,9 +331,11 @@ class AgentLoop:
             chat_id=msg.chat_id,
         )
 
-        config = load_config()
-        thinkingToolUseStreamingConfig = config.tools.thinkingToolUseStreaming
         async def _bus_progress(content: str) -> None:
+            # Reload config per progress message to get the latest config
+            config = load_config()
+            thinkingToolUseStreamingConfig = config.tools.thinkingToolUseStreaming
+
             if thinkingToolUseStreamingConfig.enabled:
                 posibleToolName = content.split("(")[0]
                 tool = self.tools.get(posibleToolName)
