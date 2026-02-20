@@ -12,10 +12,10 @@ class EdgeTextToSpeechProvider:
     Text-to-speech provider using Microsoft Edge TTS (edge-tts).
 
     Generates OGG/Opus audio files from text using Edge's neural voices,
-    applying a 1.5× speed-up via ffmpeg for a snappier listening pace.
+    applying a 1.5x speed-up via ffmpeg for a snappier listening pace.
     """
 
-    # Default voice — high quality Spanish neural voice
+    # Default voice - high quality English neural voice
     DEFAULT_VOICE = "en-US-AndrewMultilingualNeural"
 
     def __init__(self, voice: str = DEFAULT_VOICE, rate: float = 1.0):
