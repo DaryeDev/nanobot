@@ -237,7 +237,6 @@ class AgentLoop:
                         if content:
 
                             # Find the session id of the session the message was sent to (wasn't available as tool call argument, for some reason)
-                            import re
                             match = re.search(r"Message sent to (\S+)", result) # Example: Message sent to telegram:123456789 with 1 attachments
                             finalMessageSessionId = match.group(1) if match else None
 
