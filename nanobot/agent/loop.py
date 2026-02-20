@@ -171,7 +171,7 @@ class AgentLoop:
         self,
         initial_messages: list[dict],
         on_progress: Callable[[str], Awaitable[None]] | None = None,
-        session: Session | None = None,
+        session: Session | None = None
     ) -> tuple[str | None, list[str]]:
         """
         Run the agent iteration loop.
