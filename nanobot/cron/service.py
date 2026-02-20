@@ -378,20 +378,21 @@ class CronService:
             
             logger.info("Cron: added job '{}' ({})", name, job.id)
             return job
-
-    def remove_job(self, job_id: str) -> bool:
+    
+    async def remove_job(self, job_id: str) -> bool:
         """Remove a job by ID."""
-        store = self._load_store()
-        before = len(store.jobs)
-        store.jobs = [j for j in store.jobs if j.id != job_id]
-        removed = len(store.jobs) < before
-        
-        if removed:
-            self._save_store()
-            self._arm_timer()
-            logger.info("Cron: removed job {}", job_id)
-        
-        return removed
+        async with self._lock:
+            store = self._load_store()
+            before = len(store.jobs)
+            store.jobs = [j for j in store.jobs if j.id != job_id]
+            removed = len(store.jobs) < before
+            
+            if removed:
+                self._save_store()
+                self._arm_timer()
+                logger.info("Cron: removed job {}", job_id)
+            
+            return removed
     
     async def enable_job(self, job_id: str, enabled: bool = True) -> CronJob | None:
         """Enable or disable a job."""
