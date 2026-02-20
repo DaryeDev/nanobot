@@ -411,7 +411,9 @@ class AgentLoop:
         if speechConfig.enabled and final_content and (speechConfig.always_answer_with_audio or msg.metadata.get("wasAudio")):
             from nanobot.providers.speech import EdgeTextToSpeechProvider
             tts = EdgeTextToSpeechProvider(voice=speechConfig.voice, rate=speechConfig.rate)
-            audio_path = Path.home() / ".nanobot" / "media" / f"tts_{msg.session_key.replace(":", "_")}.ogg"
+            
+            audioFileName = f"tts_{msg.session_key.replace(":", "_")}.ogg"
+            audio_path = Path.home() / ".nanobot" / "media" / audioFileName
             result = await tts.synthesize(final_content, audio_path)
             if result:
                 audioAnswerPath = str(result)
