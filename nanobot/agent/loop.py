@@ -432,7 +432,7 @@ class AgentLoop:
             chat_id=msg.chat_id,
             content=final_content if sendMessageAsText else "[empty message]",
             metadata=msg.metadata or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
-            media=[msg.metadata["audioFilePath"]] if msg.metadata["audioFilePath"] else None,
+            media=[msg.metadata["audioFilePath"]] if msg.metadata.get("audioFilePath") else [],
         )
     
     async def _process_system_message(self, msg: InboundMessage) -> OutboundMessage | None:
