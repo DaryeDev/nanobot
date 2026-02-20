@@ -37,7 +37,7 @@ class GroqTranscriptionProvider:
         
         path = Path(file_path)
         if not path.exists():
-            logger.error(f"Audio file not found: {file_path}")
+            logger.error("Audio file not found: {}", file_path)
             return ""
         
         try:
@@ -63,7 +63,7 @@ class GroqTranscriptionProvider:
                     return data.get("text", "")
                     
         except Exception as e:
-            logger.error(f"Groq transcription error: {e}")
+            logger.error("Groq transcription error: {}", e)
             return ""
 
 
