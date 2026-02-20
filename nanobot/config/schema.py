@@ -282,7 +282,7 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
-class SpeechConfig(BaseModel):
+class SpeechConfig(Base):
     """Speech configuration."""
     enabled: bool = False
     voice: str = "en-US-AndrewMultilingualNeural"

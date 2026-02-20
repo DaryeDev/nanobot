@@ -7,6 +7,7 @@ import json_repair
 from pathlib import Path
 import re
 from typing import Any, Awaitable, Callable
+from datetime import datetime
 
 from loguru import logger
 
@@ -227,7 +228,7 @@ class AgentLoop:
                     tools_used.append(tool_call.name)
                     args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
                     logger.info("Tool call: {}({})", tool_call.name, args_str[:200])
-
+                    
                     result = await self.tools.execute(tool_call.name, tool_call.arguments)
 
                     # Record message tool usage in corresponding session
@@ -236,7 +237,6 @@ class AgentLoop:
                         if content:
 
                             # Find the session id of the session the message was sent to (wasn't available as tool call argument, for some reason)
-                            import re
                             match = re.search(r"Message sent to (\S+)", result) # Example: Message sent to telegram:123456789 with 1 attachments
                             finalMessageSessionId = match.group(1) if match else None
 
@@ -426,15 +426,16 @@ class AgentLoop:
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
 
-        audioAnswerPath = None
         sendMessageAsText = True
         if speechConfig.enabled and final_content and (speechConfig.always_answer_with_audio or msg.metadata.get("wasAudio")):
             from nanobot.providers.speech import EdgeTextToSpeechProvider
             tts = EdgeTextToSpeechProvider(voice=speechConfig.voice, rate=speechConfig.rate)
-            audio_path = Path.home() / ".nanobot" / "media" / f"tts_{msg.session_key.replace(":", "_")}.ogg"
+
+            audioFilePath = f"tts_{msg.session_key.replace(':', '_')}_{int(datetime.now().timestamp() * 1000)}.ogg"
+            audio_path = Path.home() / ".nanobot" / "media" / audioFilePath
             result = await tts.synthesize(final_content, audio_path)
             if result:
-                audioAnswerPath = str(result)
+                msg.metadata["audioFilePath"] = str(result)
 
                 if not speechConfig.send_transcription:
                     sendMessageAsText = False
@@ -455,7 +456,7 @@ class AgentLoop:
             chat_id=msg.chat_id,
             content=final_content if sendMessageAsText else "[empty message]",
             metadata=msg.metadata or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
-            media=[audioAnswerPath] if audioAnswerPath else None,
+            media=[msg.metadata["audioFilePath"]] if msg.metadata.get("audioFilePath") else [],
         )
     
     async def _process_system_message(self, msg: InboundMessage) -> OutboundMessage | None:
