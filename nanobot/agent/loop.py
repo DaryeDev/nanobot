@@ -7,6 +7,7 @@ import json_repair
 from pathlib import Path
 import re
 from typing import Any, Awaitable, Callable
+from datetime import datetime
 
 from loguru import logger
 
@@ -406,17 +407,16 @@ class AgentLoop:
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
 
-        audioAnswerPath = None
         sendMessageAsText = True
         if speechConfig.enabled and final_content and (speechConfig.always_answer_with_audio or msg.metadata.get("wasAudio")):
             from nanobot.providers.speech import EdgeTextToSpeechProvider
             tts = EdgeTextToSpeechProvider(voice=speechConfig.voice, rate=speechConfig.rate)
-            
-            audioFileName = f"tts_{msg.session_key.replace(":", "_")}.ogg"
-            audio_path = Path.home() / ".nanobot" / "media" / audioFileName
+
+            audioFilePath = f"tts_{msg.session_key.replace(':', '_')}_{int(datetime.now().timestamp() * 1000)}.ogg"
+            audio_path = Path.home() / ".nanobot" / "media" / audioFilePath
             result = await tts.synthesize(final_content, audio_path)
             if result:
-                audioAnswerPath = str(result)
+                msg.metadata["audioFilePath"] = str(result)
 
                 if not speechConfig.send_transcription:
                     sendMessageAsText = False
@@ -433,7 +433,7 @@ class AgentLoop:
             chat_id=msg.chat_id,
             content=final_content if sendMessageAsText else "[empty message]",
             metadata=msg.metadata or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
-            media=[audioAnswerPath] if audioAnswerPath else None,
+            media=[msg.metadata["audioFilePath"]] if msg.metadata["audioFilePath"] else None,
         )
     
     async def _process_system_message(self, msg: InboundMessage) -> OutboundMessage | None:
