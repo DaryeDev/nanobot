@@ -360,8 +360,8 @@ class AgentLoop:
             thinkingToolUseStreamingConfig = config.tools.thinkingToolUseStreaming
 
             if thinkingToolUseStreamingConfig.enabled:
-                posibleToolName = content.split("(")[0]
-                tool = self.tools.get(posibleToolName)
+                possibleToolName = content.split("(")[0]
+                tool = self.tools.get(possibleToolName)
                 if tool:
                     content = thinkingToolUseStreamingConfig.toolUsageTemplate.replace("{{tool}}", content)
                     if msg.channel in thinkingToolUseStreamingConfig.channelsBlacklist or tool.name in thinkingToolUseStreamingConfig.toolsBlacklist or "*" in thinkingToolUseStreamingConfig.toolsBlacklist:
