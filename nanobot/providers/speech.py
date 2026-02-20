@@ -49,6 +49,9 @@ class EdgeTextToSpeechProvider:
         """
         output_path = Path(output_path)
         mp3_path = output_path.with_suffix(".mp3")
+        
+        # Ensure the output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             # 1. Synthesise to MP3 via Edge TTS
